@@ -1,4 +1,8 @@
-#if defined(__APPLE__)
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
+#ifdef __APPLE__
 #include <OpenGL/gl3.h>
 #else
 #include <GL/gl.h>
@@ -210,9 +214,25 @@ void render(ShaderData shader_data, GLuint vao) {
   glDrawArrays(GL_TRIANGLES, 0, 3);
 }
 
-int main(void) {
+typedef struct Context {
   GLFWwindow *window;
+  ShaderData shader_data;
+  RenderSetupData render_setup_data;
+} Context;
 
+Context glob_context = {0};
+
+void main_loop() {
+  process_input(glob_context.window);
+
+  // Render
+  render(glob_context.shader_data, glob_context.render_setup_data.VAO);
+
+  glfwSwapBuffers(glob_context.window);
+  glfwPollEvents();
+}
+
+int main(void) {
   /* Initialize the library */
   if (!glfwInit())
     return -1;
@@ -224,37 +244,36 @@ int main(void) {
   // ^ Needed for Mac OS.
 
   /* Create a windowed mode window and its OpenGL context */
-  window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "snake in c min", NULL,
-                            NULL);
-  if (!window) {
+  glob_context.window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT,
+                                         "snake in c min", NULL, NULL);
+  if (!glob_context.window) {
     glfwTerminate();
     return -1;
   }
 
   /* Make the window's context current */
-  glfwMakeContextCurrent(window);
+  glfwMakeContextCurrent(glob_context.window);
 
-  ShaderData shader_data = setup_shader_program();
-  if (!shader_data.success) {
+  glob_context.shader_data = setup_shader_program();
+  if (!glob_context.shader_data.success) {
     return -1;
   }
 
-  RenderSetupData render_setup_data = setup_rendering();
+  glob_context.render_setup_data = setup_rendering();
 
+#ifdef __EMSCRIPTEN__
+  emscripten_set_main_loop(main_loop, 0, true);
+#else
   // Start rendering infinitely.
-  while (!glfwWindowShouldClose(window)) {
-    process_input(window);
-
-    // Render
-    render(shader_data, render_setup_data.VAO);
-
-    glfwSwapBuffers(window);
-    glfwPollEvents();
+  while (!glfwWindowShouldClose(glob_context.window)) {
+    main_loop();
   }
+#endif
 
-  cleanup_shader(&shader_data);
-  cleanup_render_setup(&render_setup_data);
+  cleanup_shader(&glob_context.shader_data);
+  cleanup_render_setup(&glob_context.render_setup_data);
 
+  glfwDestroyWindow(glob_context.window);
   glfwTerminate();
   return 0;
 }
