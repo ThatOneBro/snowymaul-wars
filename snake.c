@@ -128,8 +128,8 @@ static const char fragment_shader_source[] =
     "  outColor = vec4(1, 0, 0.5, 1);\n"
     "}\n";
 
-const int vert_len = sizeof(vertex_shader_source);
-const int frag_len = sizeof(fragment_shader_source);
+static const int vert_len = sizeof(vertex_shader_source);
+static const int frag_len = sizeof(fragment_shader_source);
 
 ShaderData setup_shader_program() {
   ShaderData result = {0};
