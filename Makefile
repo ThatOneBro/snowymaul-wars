@@ -1,5 +1,15 @@
 
-.PHONY: build
+.PHONY: clean build run all
+
+clean:
+	rm -rf build
 
 build:
-	clang snake.c -g -O0 -o snake -lglfw3 -framework Cocoa -framework OpenGL -framework IOKit
+	mkdir -p build
+	cmake -B./build -S.
+	cmake --build ./build
+
+run:
+	./build/snake
+
+all: clean build run

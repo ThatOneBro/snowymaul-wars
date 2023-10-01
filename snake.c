@@ -99,7 +99,7 @@ GLuint create_program(GLuint vertex_shader, GLuint fragment_shader) {
   return program;
 }
 
-const char vertex_shader_source[] =
+static const char vertex_shader_source[] =
     "#version 330 core\n"
 
     "// an attribute is an input (in) to a vertex shader.\n"
@@ -113,7 +113,7 @@ const char vertex_shader_source[] =
     "  gl_Position = a_position;\n"
     "}\n";
 
-const char fragment_shader_source[] =
+static const char fragment_shader_source[] =
     "#version 330 core\n"
 
     "// fragment shaders don't have a default precision so we need\n"
