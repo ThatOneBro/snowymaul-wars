@@ -171,7 +171,7 @@ RenderSetupData setup_rendering() {
   // ..:: Initialization code (done once (unless your object frequently
   // changes)) :: ..
   // 1. bind Vertex Array Object
-  RenderSetupData result;
+  RenderSetupData result = {0};
   glGenVertexArrays(1, &result.VAO);
   glGenBuffers(1, &result.VBO);
 
@@ -199,14 +199,14 @@ RenderSetupData setup_rendering() {
   return result;
 }
 
-void render(ShaderData shader_data, GLuint VAO) {
+void render(ShaderData shader_data, GLuint vao) {
   // Set a clear color.
   glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT);
 
   // 2. use our shader program when we want to render an object
   glUseProgram(shader_data.shader_program);
-  glBindVertexArray(VAO);
+  glBindVertexArray(vao);
   glDrawArrays(GL_TRIANGLES, 0, 3);
 }
 
