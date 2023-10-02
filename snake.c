@@ -2,11 +2,7 @@
 #include <emscripten.h>
 #endif
 
-#ifdef __APPLE__
-#include <OpenGL/gl3.h>
-#else
-#include <GL/gl.h>
-#endif
+#include <glad/gl.h>
 
 #include <GLFW/glfw3.h>
 #include <stdio.h>
@@ -57,8 +53,7 @@ GLuint create_shader(GLenum type, const char source[], const int len) {
     char infoLog[512];
     glGetShaderInfoLog(shader, 512, NULL, infoLog);
     printf("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n");
-    printf(infoLog);
-    printf("\n");
+    printf("%s\n", infoLog);
     glDeleteShader(shader);
     return 0;
   }
@@ -154,7 +149,7 @@ ShaderData setup_shader_program() {
   if (!success) {
     glGetProgramInfoLog(result.shader_program, 512, NULL, infoLog);
     printf("ERROR::SHADER::Program::COMPILATION_FAILED\n");
-    printf(infoLog);
+    printf("%s\n", infoLog);
     cleanup_shader(&result);
     return ShaderData_default;
   }
@@ -253,6 +248,12 @@ int main(void) {
 
   /* Make the window's context current */
   glfwMakeContextCurrent(glob_context.window);
+
+  int version = gladLoadGL(glfwGetProcAddress);
+  if (version == 0) {
+    printf("Failed to initialize OpenGL context\n");
+    return -1;
+  }
 
   glob_context.shader_data = setup_shader_program();
   if (!glob_context.shader_data.success) {
