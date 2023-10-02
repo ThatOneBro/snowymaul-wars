@@ -191,8 +191,7 @@ RenderSetupData setup_rendering()
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices,
         GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float),
-        (void *)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(0);
 
     // note that this is allowed, the call to glVertexAttribPointer registered
@@ -253,8 +252,7 @@ int main(void)
     // ^ Needed for Mac OS.
 
     /* Create a windowed mode window and its OpenGL context */
-    glob_context.window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT,
-        "snake in c min", NULL, NULL);
+    glob_context.window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "snake in c min", NULL, NULL);
     if (!glob_context.window) {
         glfwTerminate();
         return -1;
