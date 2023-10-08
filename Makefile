@@ -1,5 +1,5 @@
 
-.PHONY: clean build-native-release build-native-debug build-emscripten run all-debug all-release
+.PHONY: clean build-native-release build-native-debug build-emscripten run all-debug all-emscripten all-release
 
 clean:
 	rm -rf build
@@ -22,5 +22,9 @@ build-native-release:
 run:
 	./build/snake
 
+run-wasm:
+	emrun --browser chrome ./build/snake.html
+
 all-debug: clean build-native-debug run
+all-emscripten: clean build-emscripten run-wasm
 all-release: clean build-native-release run

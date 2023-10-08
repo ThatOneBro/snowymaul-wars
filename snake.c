@@ -11,6 +11,12 @@
 #define WINDOW_WIDTH 640
 #define WINDOW_HEIGHT 480
 
+#ifdef __EMSCRIPTEN__
+#define GL_VERS_STR "#version 300 es\n"
+#else
+#define GL_VERS_STR "#version 330 core\n"
+#endif
+
 // Container struct for shaders & programs.
 typedef struct ShaderData {
     GLuint vertex_shader;
@@ -102,33 +108,33 @@ GLuint create_program(GLuint vertex_shader, GLuint fragment_shader)
 }
 
 static const char vertex_shader_source[]
-    = "#version 330 core\n"
+    = GL_VERS_STR
 
-      "// an attribute is an input (in) to a vertex shader.\n"
-      "// It will receive data from a buffer\n"
-      "in vec4 a_position;\n"
+    "// an attribute is an input (in) to a vertex shader.\n"
+    "// It will receive data from a buffer\n"
+    "in vec4 a_position;\n"
 
-      "// all shaders have a main function\n"
-      "void main() {\n"
-      "  // gl_Position is a special variable a vertex shader\n"
-      "  // is responsible for setting\n"
-      "  gl_Position = a_position;\n"
-      "}\n";
+    "// all shaders have a main function\n"
+    "void main() {\n"
+    "  // gl_Position is a special variable a vertex shader\n"
+    "  // is responsible for setting\n"
+    "  gl_Position = a_position;\n"
+    "}\n";
 
 static const char fragment_shader_source[]
-    = "#version 330 core\n"
+    = GL_VERS_STR
 
-      "// fragment shaders don't have a default precision so we need\n"
-      "// to pick one. highp is a good default. It means \"high precision\"\n"
-      "precision highp float;\n"
+    "// fragment shaders don't have a default precision so we need\n"
+    "// to pick one. highp is a good default. It means \"high precision\"\n"
+    "precision highp float;\n"
 
-      "// we need to declare an output for the fragment shader\n"
-      "out vec4 outColor;\n"
+    "// we need to declare an output for the fragment shader\n"
+    "out vec4 outColor;\n"
 
-      "void main() {\n"
-      "  // Just set the output to a constant redish-purple\n"
-      "  outColor = vec4(1, 0, 0.5, 1);\n"
-      "}\n";
+    "void main() {\n"
+    "  // Just set the output to a constant redish-purple\n"
+    "  outColor = vec4(1, 0, 0.5, 1);\n"
+    "}\n";
 
 static const int vert_len = sizeof(vertex_shader_source);
 static const int frag_len = sizeof(fragment_shader_source);
@@ -275,7 +281,7 @@ int main(void)
     glob_context.render_setup_data = setup_rendering();
 
 #ifdef __EMSCRIPTEN__
-    emscripten_set_main_loop(main_loop, 0, true);
+    emscripten_set_main_loop(main_loop, 0, GL_TRUE);
 #else
     // Start rendering infinitely.
     while (!glfwWindowShouldClose(glob_context.window)) {
