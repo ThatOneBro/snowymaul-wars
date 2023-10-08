@@ -12,9 +12,9 @@
 #define WINDOW_HEIGHT 480
 
 #ifdef __EMSCRIPTEN__
-#define GL_VERS_STR "#version 300 es\n"
+#define GLSL_VERS_STR "#version 300 es\n"
 #else
-#define GL_VERS_STR "#version 330 core\n"
+#define GLSL_VERS_STR "#version 330 core\n"
 #endif
 
 // Container struct for shaders & programs.
@@ -108,7 +108,7 @@ GLuint create_program(GLuint vertex_shader, GLuint fragment_shader)
 }
 
 static const char vertex_shader_source[]
-    = GL_VERS_STR
+    = GLSL_VERS_STR
 
     "// an attribute is an input (in) to a vertex shader.\n"
     "// It will receive data from a buffer\n"
@@ -122,7 +122,7 @@ static const char vertex_shader_source[]
     "}\n";
 
 static const char fragment_shader_source[]
-    = GL_VERS_STR
+    = GLSL_VERS_STR
 
     "// fragment shaders don't have a default precision so we need\n"
     "// to pick one. highp is a good default. It means \"high precision\"\n"
