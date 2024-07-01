@@ -1,3 +1,15 @@
 {
-  "editor.tabSize": 4
+  "editor.tabSize": 4,
+  "files.associations": {
+    "*.svelte": "svelte",
+    "*.prisma": "prisma",
+    "gl.h": "c",
+    "rlgl.h": "c",
+    "glfw3.h": "c",
+    "raymath.h": "c",
+    "stdio.h": "c",
+    "glad.h": "c",
+    "glad_gles2.h": "c",
+    "raylib.h": "c"
+  }
 }

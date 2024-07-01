@@ -1,30 +1,28 @@
 
-.PHONY: clean build-native-release build-native-debug build-emscripten run all-debug all-emscripten all-release
+.PHONY: clean make-dirs build-emscripten build-native-debug build-native-release run-native run-emscripten all-emscripten
 
 clean:
 	rm -rf build
 
-build-emscripten:
+make-dirs:
 	mkdir -p build
-	cmake -S . -B build "-DCMAKE_TOOLCHAIN_FILE=~/repos/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+
+build-emscripten: make-dirs
+	emcmake cmake -S . -B build
 	cmake --build build
 
-build-native-debug:
-	mkdir -p build
+build-native-debug: make-dirs
 	cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 	cmake --build build
 
-build-native-release:
-	mkdir -p build
+build-native-release: make-dirs
 	cmake -S . -B build
 	cmake --build build
 
-run:
+run-native:
 	./build/snake
 
-run-wasm:
+run-emscripten:
 	emrun --browser chrome ./build/snake.html
 
-all-debug: clean build-native-debug run
-all-emscripten: clean build-emscripten run-wasm
-all-release: clean build-native-release run
+all-emscripten: clean make-dirs build-emscripten run-emscripten
