@@ -14,5 +14,5 @@ Goals:
   - [ ] Windows 10+ x64
   - [ ] Windows 11 ARM64
   - [x] Chrome latest
-  - [ ] Firefox latest
-  - [ ] Safari latest
+  - [x] Firefox latest
+  - [x] Safari latest
