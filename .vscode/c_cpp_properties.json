@@ -5,7 +5,10 @@
       "includePath": [
         "${workspaceFolder}/**",
         "/opt/homebrew/opt/glfw/include",
-        "./deps/glad/include"
+        "/opt/homebrew/opt/libuv/include",
+        "/opt/homebrew/opt/libwebsockets/include",
+        "/opt/homebrew/opt/openssl/include",
+        "/Users/derrick/repos/emsdk/upstream/emscripten/system/include"
       ],
       "defines": [],
       "macFrameworkPath": [
