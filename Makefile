@@ -1,5 +1,5 @@
 
-.PHONY: clean make-dirs build-emscripten build-native-debug build-native-release run-native run-emscripten run-test-ws all-native-debug all-native-release all-emscripten
+.PHONY: clean make-dirs build-emscripten build-native-debug build-native-release run-native run-emscripten run-test-ws fast-build-native-debug all-native-debug all-native-release all-emscripten
 
 clean:
 	rm -rf client/build
@@ -20,13 +20,15 @@ build-native-release: make-dirs
 	cmake --build client/build
 
 run-native:
-	./client/build/snake
+	./client/build/td
 
 run-emscripten:
-	emrun --browser chrome ./client/build/snake.html
+	emrun --browser chrome ./client/build/td.html
 
 run-test-ws:
 	emrun --browser chrome ./client/build/test-ws.html
+
+fast-build-native-debug: build-native-debug run-native
 
 all-native-debug: clean make-dirs build-native-debug run-native
 all-native-release: clean make-dirs build-native-release run-native

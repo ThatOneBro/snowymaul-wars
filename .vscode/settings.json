@@ -4,7 +4,12 @@
     "*.svelte": "svelte",
     "*.prisma": "prisma",
     "*.h": "c",
-    "*.c": "c"
+    "*.c": "c",
+    "__node_handle": "c",
+    "*.m": "c",
+    "__bit_reference": "c",
+    "bitset": "c",
+    "unordered_map": "c"
   },
   "[c]": {
     "editor.tabSize": 4
