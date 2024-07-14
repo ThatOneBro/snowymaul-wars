@@ -21,6 +21,12 @@
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 450
 #define SQUARE_SIZE 31
+
+// Rendering stuff
+#define BORDER_THICKNESS 2
+#define CURSOR_COLOR GOLD
+
+// Entity constants
 #define MAX_TOWERS 100
 #define MAX_MINIONS 100
 #define MAX_PROJECTILES 5000
@@ -31,7 +37,7 @@
 // Towers
 #define DEFAULT_TOWER_HEALTH 100
 #define DEFAULT_TOWER_POWER 10
-#define DEFAULT_TOWER_COLOR LIGHTGRAY
+#define DEFAULT_TOWER_COLOR SKYBLUE
 
 //----------------------------------------------------------------------------------
 // Types and Structures Definition
@@ -208,7 +214,7 @@ void draw_rect(Vector2 pos, Vector2 size, Color color, DrawStyle style)
 {
     switch (style) {
     case BORDER_ONLY:
-        DrawRectangleLines(pos.x, pos.y, size.x, size.y, color);
+        DrawRectangleLinesEx((Rectangle) { .x = pos.x, .y = pos.y, .width = size.x, .height = size.y }, BORDER_THICKNESS, color);
         break;
     case SOLID:
         DrawRectangleV(pos, size, color);
@@ -285,7 +291,7 @@ void InitGame(void)
     cursor.style = BORDER_ONLY;
     cursor.position = (Vector2) { SQUARE_SIZE + offset.x / 2, SQUARE_SIZE + offset.y / 2 };
     cursor.size = (Vector2) { SQUARE_SIZE, SQUARE_SIZE };
-    cursor.color = DARKBLUE;
+    cursor.color = CURSOR_COLOR;
 
     // for (int i = 0; i < STARTING_MINION_WAVE_SIZE; i++) {
     //     minions[i].position = (Vector2) { offset.x / 2, offset.y / 2 };
@@ -354,11 +360,6 @@ void DrawGame(void)
             DrawLineV((Vector2) { offset.x / 2, SQUARE_SIZE * i + offset.y / 2 }, (Vector2) { screenWidth - offset.x / 2, SQUARE_SIZE * i + offset.y / 2 }, LIGHTGRAY);
         }
 
-        // Draw cursor
-        // We draw this first after drawing the grid since renderer will already be in line mode
-        // Switching between line mode and normal draw mode triggers a flush
-        draw_rect(cursor.position, cursor.size, cursor.color, cursor.style);
-
         // Iterate all towers
         int tower_count = currentTowers;
         for (int i = 0; i < MAX_TOWERS; i++) {
@@ -372,11 +373,34 @@ void DrawGame(void)
             }
         }
 
+        // Iterate again, add borders
+        tower_count = currentTowers;
+        for (int i = 0; i < MAX_TOWERS; i++) {
+            if (!towers[i].alive) {
+                continue;
+            }
+            draw_rect(towers[i].position, towers[i].size, DARKBLUE, BORDER_ONLY);
+            // We can break early if we already have found all of the towers and drawn them
+            if (--tower_count == 0) {
+                break;
+            }
+        }
+
+        // Draw cursor
+        // We draw this last after drawing the grid since renderer will already be in line mode
+        // Switching between line mode and normal draw mode triggers a flush
+        draw_rect(cursor.position, cursor.size, cursor.color, cursor.style);
+
         const char *gold_text = TextFormat("GOLD: %d", gold);
         DrawText(gold_text, screenWidth - MeasureText(gold_text, 25) - 10, 10, 25, GRAY);
 
         if (pause)
             DrawText("GAME PAUSED", screenWidth / 2 - MeasureText("GAME PAUSED", 40) / 2, screenHeight / 2 - 40, 40, GRAY);
+#ifdef DEBUG
+        else {
+            DrawFPS(screenWidth - 90, screenHeight - 25);
+        }
+#endif
     } else
         DrawText("PRESS [ENTER] TO PLAY AGAIN", GetScreenWidth() / 2 - MeasureText("PRESS [ENTER] TO PLAY AGAIN", 20) / 2, GetScreenHeight() / 2 - 50, 20, GRAY);
 
