@@ -1,4 +1,6 @@
 #include "raylib.h"
+#include "raymath.h"
+#include <stdio.h>
 
 #if defined(PLATFORM_WEB)
 #include <emscripten/emscripten.h>
@@ -20,7 +22,7 @@
 //----------------------------------------------------------------------------------
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 450
-#define SQUARE_SIZE 31
+#define SQUARE_SIZE 32
 
 // Rendering stuff
 #define BORDER_THICKNESS 2
@@ -48,6 +50,11 @@ typedef enum DrawStyle {
     BORDER_ONLY,
 } DrawStyle;
 
+typedef struct SlotVector2 {
+    unsigned int x;
+    unsigned int y;
+} SlotVector2;
+
 typedef struct Cursor {
     Vector2 position;
     Vector2 size;
@@ -57,7 +64,7 @@ typedef struct Cursor {
 
 typedef struct Tower {
     bool alive;
-    Vector2 position;
+    SlotVector2 slot_pos;
     Vector2 size;
     int max_health;
     int curr_health;
@@ -97,6 +104,8 @@ static unsigned int currentTowers = 0;
 static unsigned int currentBullets = 0;
 static unsigned int currentMinions = 0;
 
+// TODO: Use a bitset
+static bool slots_occupied[SCREEN_WIDTH / (SQUARE_SIZE + 1)][SCREEN_HEIGHT / (SQUARE_SIZE + 1)] = { 0 };
 static Cursor cursor = { 0 };
 static Tower towers[MAX_TOWERS] = { 0 };
 static Bullet bullets[MAX_PROJECTILES] = { 0 };
@@ -115,9 +124,6 @@ static void UpdateDrawFrame(void); // Update and Draw (one frame)
 
 // Cleanup
 static void run_defrag(void); // Run defrag on entity arrays
-
-// Custom draw functions
-static void draw_rect(Vector2 pos, Vector2 size, Color color, DrawStyle style); // Draws a rectangle
 
 // Custom logic functions
 static bool maybe_purchase_tower(Cursor cursor); // Attempt to purchase tower
@@ -210,43 +216,47 @@ void run_defrag()
     }
 }
 
-void draw_rect(Vector2 pos, Vector2 size, Color color, DrawStyle style)
+static inline Rectangle pos_and_size_to_rect(Vector2 pos, Vector2 size)
 {
-    switch (style) {
-    case BORDER_ONLY:
-        DrawRectangleLinesEx((Rectangle) { .x = pos.x, .y = pos.y, .width = size.x, .height = size.y }, BORDER_THICKNESS, color);
-        break;
-    case SOLID:
-        DrawRectangleV(pos, size, color);
-        break;
-    default:
-        UNREACHABLE();
-    }
+    return (Rectangle) { .x = pos.x, .y = pos.y, .width = size.x, .height = size.y };
 }
 
-static inline bool is_same_position(Vector2 pos1, Vector2 pos2)
+static inline SlotVector2 world_pos_to_slot_space(Vector2 pos)
+{
+    return (SlotVector2) { .x = pos.x / SQUARE_SIZE, .y = pos.y / SQUARE_SIZE };
+}
+
+static inline Vector2 slot_pos_to_world_space_origin(SlotVector2 slot_pos)
+{
+    return (Vector2) { .x = slot_pos.x * SQUARE_SIZE, .y = slot_pos.y * SQUARE_SIZE };
+}
+
+static inline bool is_same_world_pos(Vector2 pos1, Vector2 pos2)
 {
     return pos1.x == pos2.x && pos1.y == pos2.y;
 }
 
-static inline bool is_tower_at_position(Vector2 pos)
+static inline bool is_same_slot_pos(SlotVector2 pos1, SlotVector2 pos2)
 {
-    int tower_count = currentTowers;
-    for (int i = 0; i < MAX_TOWERS; i++) {
-        if (!towers[i].alive) {
-            continue;
-        }
-        if (is_same_position(towers[i].position, pos)) {
-            return true;
-        }
-        if (--tower_count == 0) {
-            break;
-        }
-    }
-    return false;
+    return pos1.x == pos2.x && pos1.y == pos2.y;
 }
 
-static inline void create_tower_at_pos(Vector2 pos)
+static inline bool is_slot_occupied(SlotVector2 slot_pos)
+{
+    return slots_occupied[slot_pos.x][slot_pos.y];
+}
+
+static inline Vector2 get_slot_origin(SlotVector2 slot_pos)
+{
+    return (Vector2) { .x = (slot_pos.x * SQUARE_SIZE) - SQUARE_SIZE / 2, .y = (slot_pos.y * SQUARE_SIZE) - SQUARE_SIZE / 2 };
+}
+
+static inline Vector2 calc_position_centered_at_origin(Vector2 origin, Vector2 size)
+{
+    return (Vector2) { .x = origin.x + 1.5 * size.x, .y = origin.y + 1.5 * size.y };
+}
+
+static inline void create_tower_at_position(Vector2 pos)
 {
     for (int i = 0; i < MAX_TOWERS; i++) {
         if (!towers[i].alive) {
@@ -254,8 +264,11 @@ static inline void create_tower_at_pos(Vector2 pos)
             towers[i].max_health = DEFAULT_TOWER_HEALTH;
             towers[i].curr_health = DEFAULT_TOWER_HEALTH;
             towers[i].color = DEFAULT_TOWER_COLOR;
-            towers[i].position = pos;
-            towers[i].size = (Vector2) { SQUARE_SIZE, SQUARE_SIZE };
+            towers[i].slot_pos = world_pos_to_slot_space(pos);
+            towers[i].size = (Vector2) { SQUARE_SIZE / 2, SQUARE_SIZE / 2 };
+
+            slots_occupied[towers[i].slot_pos.x][towers[i].slot_pos.y] = true;
+            printf("DEBUG: slot_pos: %d, %d\n", towers[i].slot_pos.x, towers[i].slot_pos.y);
 
             if (i >= MAX_TOWERS - 10) {
                 run_defrag();
@@ -268,9 +281,9 @@ static inline void create_tower_at_pos(Vector2 pos)
 
 bool maybe_purchase_tower(Cursor cursor)
 {
-    if (gold >= TOWER_COST && !is_tower_at_position(cursor.position)) {
+    if (gold >= TOWER_COST && !is_slot_occupied(world_pos_to_slot_space(cursor.position))) {
         gold -= TOWER_COST;
-        create_tower_at_pos(cursor.position);
+        create_tower_at_position(cursor.position);
         return true;
     }
     return false;
@@ -292,14 +305,6 @@ void InitGame(void)
     cursor.position = (Vector2) { SQUARE_SIZE + offset.x / 2, SQUARE_SIZE + offset.y / 2 };
     cursor.size = (Vector2) { SQUARE_SIZE, SQUARE_SIZE };
     cursor.color = CURSOR_COLOR;
-
-    // for (int i = 0; i < STARTING_MINION_WAVE_SIZE; i++) {
-    //     minions[i].position = (Vector2) { offset.x / 2, offset.y / 2 };
-    //     minions[i].size = (Vector2) { SQUARE_SIZE, SQUARE_SIZE };
-    //     minions[i].velocity = (Vector2) { SQUARE_SIZE, 0 };
-    //     minions[i].alive = true;
-    //     currentMinions++;
-    // }
 }
 
 // Update game (one frame)
@@ -366,30 +371,32 @@ void DrawGame(void)
             if (!towers[i].alive) {
                 continue;
             }
-            draw_rect(towers[i].position, towers[i].size, towers[i].color, SOLID);
+            Rectangle rect = pos_and_size_to_rect((Vector2) { 0, 0 }, towers[i].size);
+            Vector2 origin = slot_pos_to_world_space_origin(towers[i].slot_pos);
+            DrawRectangleV(calc_position_centered_at_origin(get_slot_origin(towers[i].slot_pos), towers[i].size), towers[i].size, towers[i].color);
             // We can break early if we already have found all of the towers and drawn them
             if (--tower_count == 0) {
                 break;
             }
         }
 
-        // Iterate again, add borders
-        tower_count = currentTowers;
-        for (int i = 0; i < MAX_TOWERS; i++) {
-            if (!towers[i].alive) {
-                continue;
-            }
-            draw_rect(towers[i].position, towers[i].size, DARKBLUE, BORDER_ONLY);
-            // We can break early if we already have found all of the towers and drawn them
-            if (--tower_count == 0) {
-                break;
-            }
-        }
+        // // Iterate again, add borders
+        // tower_count = currentTowers;
+        // for (int i = 0; i < MAX_TOWERS; i++) {
+        //     if (!towers[i].alive) {
+        //         continue;
+        //     }
+        //     DrawRectangleLinesEx(pos_and_size_to_rect(slot_pos_to_world_space_origin(towers[i].slot_pos), Vector2Multiply(towers[i].size, (Vector2) { 2, 2 })), BORDER_THICKNESS, DARKBLUE);
+        //     // We can break early if we already have found all of the towers and drawn them
+        //     if (--tower_count == 0) {
+        //         break;
+        //     }
+        // }
 
         // Draw cursor
         // We draw this last after drawing the grid since renderer will already be in line mode
         // Switching between line mode and normal draw mode triggers a flush
-        draw_rect(cursor.position, cursor.size, cursor.color, cursor.style);
+        DrawRectangleLinesEx(pos_and_size_to_rect(cursor.position, cursor.size), BORDER_THICKNESS, cursor.color);
 
         const char *gold_text = TextFormat("GOLD: %d", gold);
         DrawText(gold_text, screenWidth - MeasureText(gold_text, 25) - 10, 10, 25, GRAY);
