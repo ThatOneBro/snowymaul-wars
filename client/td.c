@@ -23,6 +23,8 @@
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 450
 #define SQUARE_SIZE 32
+#define SLOTS_X SCREEN_WIDTH / SQUARE_SIZE
+#define SLOTS_Y SCREEN_HEIGHT / SQUARE_SIZE
 
 // Rendering stuff
 #define BORDER_THICKNESS 2
@@ -40,6 +42,9 @@
 #define DEFAULT_TOWER_HEALTH 100
 #define DEFAULT_TOWER_POWER 10
 #define DEFAULT_TOWER_COLOR SKYBLUE
+
+// Paths
+#define DEFAULT_PATH_COLOR DARKBLUE
 
 //----------------------------------------------------------------------------------
 // Types and Structures Definition
@@ -61,6 +66,12 @@ typedef struct Cursor {
     Color color;
     DrawStyle style;
 } Cursor;
+
+typedef struct Path {
+    bool alive;
+    SlotVector2 slot_pos;
+    Color color;
+} Path;
 
 typedef struct Tower {
     bool alive;
@@ -90,6 +101,18 @@ typedef struct Minion {
     Color color;
 } Minion;
 
+//----------------------------------------------------------------------------------
+// Macros
+//----------------------------------------------------------------------------------
+
+#define INIT_PATHS(type, create_path, ...)                      \
+    do {                                                        \
+        type temp[] = { __VA_ARGS__ };                          \
+        for (int i = 0; i < sizeof(temp) / sizeof(type); i++) { \
+            create_path(temp[i]);                               \
+        }                                                       \
+    } while (0)
+
 //------------------------------------------------------------------------------------
 // Global Variables Declaration
 //------------------------------------------------------------------------------------
@@ -103,9 +126,11 @@ static int gold = STARTING_GOLD;
 static unsigned int currentTowers = 0;
 static unsigned int currentBullets = 0;
 static unsigned int currentMinions = 0;
+static unsigned int currentPaths = 0;
 
-// TODO: Use a bitset
-static bool slots_occupied[SCREEN_WIDTH / (SQUARE_SIZE + 1)][SCREEN_HEIGHT / (SQUARE_SIZE + 1)] = { 0 };
+// TODO: Use a bitset for slots_occupied
+static bool slots_occupied[SLOTS_X][SLOTS_Y] = { 0 };
+static Path paths[SLOTS_X][SLOTS_Y] = { 0 };
 static Cursor cursor = { 0 };
 static Tower towers[MAX_TOWERS] = { 0 };
 static Bullet bullets[MAX_PROJECTILES] = { 0 };
@@ -248,27 +273,30 @@ static inline bool is_slot_occupied(SlotVector2 slot_pos)
 
 static inline Vector2 get_slot_origin(SlotVector2 slot_pos)
 {
-    return (Vector2) { .x = (slot_pos.x * SQUARE_SIZE) - SQUARE_SIZE / 2, .y = (slot_pos.y * SQUARE_SIZE) - SQUARE_SIZE / 2 };
+    return (Vector2) { .x = (float)(slot_pos.x * SQUARE_SIZE) + SQUARE_SIZE / 2, .y = (float)(slot_pos.y * SQUARE_SIZE) + SQUARE_SIZE / 2 };
 }
 
 static inline Vector2 calc_position_centered_at_origin(Vector2 origin, Vector2 size)
 {
-    return (Vector2) { .x = origin.x + 1.5 * size.x, .y = origin.y + 1.5 * size.y };
+    return (Vector2) { .x = origin.x - size.x / 2, .y = origin.y - size.y / 2 };
 }
 
-static inline void create_tower_at_position(Vector2 pos)
+static inline bool maybe_create_tower_at_position(SlotVector2 slot_pos)
 {
+    if (is_slot_occupied(slot_pos)) {
+        return false;
+    }
+
     for (int i = 0; i < MAX_TOWERS; i++) {
         if (!towers[i].alive) {
             towers[i].alive = true;
             towers[i].max_health = DEFAULT_TOWER_HEALTH;
             towers[i].curr_health = DEFAULT_TOWER_HEALTH;
             towers[i].color = DEFAULT_TOWER_COLOR;
-            towers[i].slot_pos = world_pos_to_slot_space(pos);
+            towers[i].slot_pos = slot_pos;
             towers[i].size = (Vector2) { SQUARE_SIZE / 2, SQUARE_SIZE / 2 };
 
             slots_occupied[towers[i].slot_pos.x][towers[i].slot_pos.y] = true;
-            printf("DEBUG: slot_pos: %d, %d\n", towers[i].slot_pos.x, towers[i].slot_pos.y);
 
             if (i >= MAX_TOWERS - 10) {
                 run_defrag();
@@ -277,16 +305,33 @@ static inline void create_tower_at_position(Vector2 pos)
         }
     }
     currentTowers++;
+    return true;
 }
 
 bool maybe_purchase_tower(Cursor cursor)
 {
-    if (gold >= TOWER_COST && !is_slot_occupied(world_pos_to_slot_space(cursor.position))) {
+    if (gold >= TOWER_COST && maybe_create_tower_at_position(world_pos_to_slot_space(cursor.position))) {
         gold -= TOWER_COST;
-        create_tower_at_position(cursor.position);
         return true;
     }
     return false;
+}
+
+static inline bool create_path_at_position(SlotVector2 slot_pos)
+{
+
+    if (is_slot_occupied(slot_pos)) {
+        return false;
+    }
+
+    paths[slot_pos.x][slot_pos.y].alive = true;
+    paths[slot_pos.x][slot_pos.y].slot_pos = slot_pos;
+    paths[slot_pos.x][slot_pos.y].color = DEFAULT_PATH_COLOR;
+
+    slots_occupied[slot_pos.x][slot_pos.y] = true;
+
+    currentPaths++;
+    return true;
 }
 
 // Initialize game variables
@@ -305,6 +350,31 @@ void InitGame(void)
     cursor.position = (Vector2) { SQUARE_SIZE + offset.x / 2, SQUARE_SIZE + offset.y / 2 };
     cursor.size = (Vector2) { SQUARE_SIZE, SQUARE_SIZE };
     cursor.color = CURSOR_COLOR;
+
+    INIT_PATHS(SlotVector2, create_path_at_position,
+        { 8, 0 }, { 8, 1 }, { 8, 2 },
+        { 8, 3 }, { 8, 4 }, { 8, 5 },
+        { 8, 6 }, { 8, 7 },
+        { 9, 0 }, { 9, 1 }, { 9, 2 },
+        { 9, 3 }, { 9, 4 }, { 9, 5 },
+        { 9, 6 }, { 9, 7 },
+        { 10, 6 }, { 10, 7 },
+        { 11, 6 }, { 11, 7 },
+        { 12, 6 }, { 12, 7 },
+        { 13, 6 }, { 13, 7 },
+        { 14, 6 }, { 14, 7 },
+        { 15, 6 }, { 15, 7 },
+        { 15, 0 }, { 15, 1 }, { 15, 2 },
+        { 15, 3 }, { 15, 4 }, { 15, 5 },
+        { 16, 6 }, { 16, 7 },
+        { 16, 0 }, { 16, 1 }, { 16, 2 },
+        { 16, 3 }, { 16, 4 }, { 16, 5 },
+        { 11, 8 }, { 11, 9 }, { 11, 10 },
+        { 11, 11 }, { 11, 12 }, { 11, 13 },
+        { 12, 8 }, { 12, 9 }, { 12, 10 },
+        { 12, 11 }, { 12, 12 }, { 12, 13 },
+        { 13, 8 }, { 13, 9 }, { 13, 10 },
+        { 13, 11 }, { 13, 12 }, { 13, 13 }, );
 }
 
 // Update game (one frame)
@@ -340,11 +410,9 @@ void UpdateGame(void)
 
             framesCounter++;
         }
-    } else {
-        if (IsKeyPressed(KEY_ENTER)) {
-            InitGame();
-            gameOver = false;
-        }
+    } else if (IsKeyPressed(KEY_ENTER)) {
+        InitGame();
+        gameOver = false;
     }
 }
 
@@ -371,27 +439,30 @@ void DrawGame(void)
             if (!towers[i].alive) {
                 continue;
             }
-            Rectangle rect = pos_and_size_to_rect((Vector2) { 0, 0 }, towers[i].size);
-            Vector2 origin = slot_pos_to_world_space_origin(towers[i].slot_pos);
-            DrawRectangleV(calc_position_centered_at_origin(get_slot_origin(towers[i].slot_pos), towers[i].size), towers[i].size, towers[i].color);
+            Vector2 offset_pos = calc_position_centered_at_origin(get_slot_origin(towers[i].slot_pos), towers[i].size);
+            DrawRectangleV(offset_pos, towers[i].size, towers[i].color);
             // We can break early if we already have found all of the towers and drawn them
             if (--tower_count == 0) {
                 break;
             }
         }
 
-        // // Iterate again, add borders
-        // tower_count = currentTowers;
-        // for (int i = 0; i < MAX_TOWERS; i++) {
-        //     if (!towers[i].alive) {
-        //         continue;
-        //     }
-        //     DrawRectangleLinesEx(pos_and_size_to_rect(slot_pos_to_world_space_origin(towers[i].slot_pos), Vector2Multiply(towers[i].size, (Vector2) { 2, 2 })), BORDER_THICKNESS, DARKBLUE);
-        //     // We can break early if we already have found all of the towers and drawn them
-        //     if (--tower_count == 0) {
-        //         break;
-        //     }
-        // }
+        // Iterate all paths
+        int path_count = currentPaths;
+        for (int i = 0; i < SLOTS_X; i++) {
+            for (int j = 0; j < SLOTS_Y; j++) {
+                if (!paths[i][j].alive) {
+                    continue;
+                }
+                Vector2 origin = get_slot_origin((SlotVector2) { i, j });
+                Vector2 offset_pos = calc_position_centered_at_origin(origin, (Vector2) { SQUARE_SIZE, SQUARE_SIZE });
+                DrawRectangleV(offset_pos, (Vector2) { SQUARE_SIZE, SQUARE_SIZE }, paths[i][j].color);
+                // We can break early if we already have found all of the towers and drawn them
+                if (--path_count == 0) {
+                    break;
+                }
+            }
+        }
 
         // Draw cursor
         // We draw this last after drawing the grid since renderer will already be in line mode
